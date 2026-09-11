@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오늘의 할 일</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 배경 이미지 설정 (todo.JPG 적용) 및 화면에 꽉 차게 조절 */
+        body {
+            background-image: url('todo.JPG');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        /* 유리모피즘 (Glassmorphism) 효과 */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="glass-card w-full max-w-md rounded-3xl shadow-2xl p-6 sm:p-8 border border-white/40">
+        <!-- 헤더 -->
+        <h1 class="text-2xl font-bold text-slate-800 mb-6 text-center">✨ 오늘의 할 일</h1>
+
+        <!-- 입력 폼 -->
+        <form id="todo-form" class="flex gap-2 mb-6">
+            <input 
+                type="text" 
+                id="todo-input" 
+                placeholder="할 일을 입력하세요..." 
+                autocomplete="off"
+                class="flex-1 px-4 py-3 rounded-xl border border-slate-200/80 bg-white/80 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-700 placeholder-slate-400 text-sm transition"
+            >
+            <button 
+                type="submit" 
+                class="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium px-5 py-3 rounded-xl text-sm transition shadow-sm hover:shadow"
+            >
+                추가
+            </button>
+        </form>
+
+        <!-- 할 일 목록 -->
+        <ul id="todo-list" class="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+            <!-- JavaScript를 통해 동적으로 추가됩니다 -->
+        </ul>
+
+        <!-- 빈 상태 메시지 -->
+        <p id="empty-message" class="text-center text-slate-400 text-sm py-8 hidden">
+            등록된 할 일이 없어요. 오늘 하루도 화이팅! 🚀
+        </p>
+    </div>
+
+    <script>
+        const todoForm = document.getElementById('todo-form');
+        const todoInput = document.getElementById('todo-input');
+        const todoList = document.getElementById('todo-list');
+        const emptyMessage = document.getElementById('empty-message');
+
+        // 로컬 스토리지에서 할 일 불러오기 (없으면 빈 배열)
+        let todos = JSON.parse(localStorage.getItem('todos')) || [];
+
+        // 화면에 렌더링하는 함수
+        function renderTodos() {
+            todoList.innerHTML = '';
+
+            if (todos.length === 0) {
+                emptyMessage.classList.remove('hidden');
+            } else {
+                emptyMessage.classList.add('hidden');
+            }
+
+            todos.forEach((todo, index) => {
+                const li = document.createElement('li');
+                li.className = `flex items-center justify-between p-3.5 rounded-xl border transition ${
+                    todo.completed ? 'bg-white/40 border-slate-200/50 text-slate-400' : 'bg-white/90 border-slate-100 text-slate-700 shadow-sm'
+                }`;
+
+                li.innerHTML = `
+                    <label class="flex items-center gap-3 cursor-pointer flex-1 overflow-hidden">
+                        <input 
+                            type="checkbox" 
+                            class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                            ${todo.completed ? 'checked' : ''}
+                            onchange="toggleTodo(${index})"
+                        >
+                        <span class="text-sm truncate ${todo.completed ? 'line-through text-slate-400' : 'text-slate-700'}">${escapeHtml(todo.text)}</span>
+                    </label>
+                    <button 
+                        type="button" 
+                        onclick="deleteTodo(${index})"
+                        class="text-slate-400 hover:text-red-500 p-1 rounded-lg transition ml-2"
+                        title="삭제"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                `;
+                todoList.appendChild(li);
+            });
+        }
+
+        // 로컬 스토리지에 저장하고 렌더링 갱신
+        function saveAndRender() {
+            localStorage.setItem('todos', JSON.stringify(todos));
+            renderTodos();
+        }
+
+        // 할 일 추가
+        todoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = todoInput.value.trim();
+            if (!text) return;
+
+            todos.push({ text, completed: false });
+            todoInput.value = '';
+            saveAndRender();
+        });
+
+        // 완료 상태 토글
+        function toggleTodo(index) {
+            todos[index].completed = !todos[index].completed;
+            saveAndRender();
+        }
+
+        // 할 일 삭제
+        function deleteTodo(index) {
+            todos.splice(index, 1);
+            saveAndRender();
+        }
+
+        // XSS 방지용 간단한 HTML Escape 함수
+        function escapeHtml(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        // 초기 렌더링 실행
+        renderTodos();
+    </script>
+</body>
+</html>
